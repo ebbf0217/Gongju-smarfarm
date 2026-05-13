@@ -232,15 +232,14 @@ export default function App() {
   const vRef = useRef(vals);
   const tRef = useRef(time);
   const pRef2 = useRef(plants);
-  const precAccRef = useRef(0);    // 누적 정밀도 점수
-  const farmerDirRef = useRef(1);  // 1=오른쪽, -1=왼쪽
-  const farmerPosRef = useRef(0.46);
+  const precAccRef = useRef(0);
+  const farmerVDirRef = useRef(1);   // 1=아래, -1=위
+  const farmerVPosRef = useRef(0.10); // top % within gh-body
   vRef.current = vals;
   tRef.current = time;
   pRef2.current = plants;
 
   const status = getStatus(vals);
-  const score = getScore(vals.health, vals.coins);
 
   // anim loop
   useEffect(() => {
@@ -268,8 +267,7 @@ export default function App() {
 
   const setFarmerReact = useCallback((anim, bubbleArr) => {
     const msg = bubbleArr[Math.floor(Math.random() * bubbleArr.length)];
-    const pos = 0.38 + Math.random() * 0.18;
-    setFarmer({ pos, anim, bubble: msg });
+    setFarmer(f => ({ ...f, anim, bubble: msg }));
     setTimeout(() => setFarmer(f => ({ ...f, anim: "", bubble: "" })), 2000);
   }, []);
 
@@ -300,31 +298,30 @@ export default function App() {
     cancelAnimationFrame(animRef.current);
     pRef.current = [];
     precAccRef.current = 0;
-    farmerDirRef.current = 1;
-    farmerPosRef.current = 0.46;
+    farmerVDirRef.current = 1;
+    farmerVPosRef.current = 0.10;
     setVals(initVals());
     setTime(TOTAL);
     setPlants(initPlants());
     setEvent(null);
     setPops({});
     setLiveScore(0);
-    setFarmer({ pos: 0.46, anim: "dance", bubble: "화이팅! 🍓", flipped: false });
+    setFarmer({ top: 0.10, anim: "dance", bubble: "화이팅! 🍓" });
     setTimeout(() => setFarmer(f => ({ ...f, anim: "", bubble: "" })), 2000);
     setCombo(0);
     setStreak(0);
     setPhase(1);
     setScreen("game");
 
-    // 농부 통로 자동 왕복
+    // 농부 통로 위아래 왕복
     farmerWalkRef.current = setInterval(() => {
       if (tRef.current <= 0) return;
-      const step = 0.022;
-      let np = farmerPosRef.current + farmerDirRef.current * step;
-      if (np >= 0.57) { farmerDirRef.current = -1; np = 0.57; }
-      else if (np <= 0.38) { farmerDirRef.current = 1; np = 0.38; }
-      farmerPosRef.current = np;
-      setFarmer(f => ({ ...f, pos: np, flipped: farmerDirRef.current < 0 }));
-    }, 550);
+      let vp = farmerVPosRef.current + farmerVDirRef.current * 0.025;
+      if (vp >= 0.42) { farmerVDirRef.current = -1; vp = 0.42; }
+      else if (vp <= 0.06) { farmerVDirRef.current = 1; vp = 0.06; }
+      farmerVPosRef.current = vp;
+      setFarmer(f => ({ ...f, top: vp }));
+    }, 480);
 
     // main tick
     timerRef.current = setInterval(() => {
@@ -765,13 +762,11 @@ export default function App() {
               </div>
             </div>
 
-            {/* 바닥 */}
-            <div className="sf-floor" />
-
-            {/* 농부 - 중앙 통로 */}
-            <div className={`farmer-wrap ${farmer.anim}`} style={{ left: `${farmer.pos * 100}%` }}>
+            {/* 농부 - 중앙 통로 위아래 이동 */}
+            <div className={`farmer-wrap ${farmer.anim}`}
+              style={{ top: `${(farmer.top ?? 0.10) * 100}%` }}>
               {farmer.bubble && <div className="bubble">{farmer.bubble}</div>}
-              <SpineFarmer anim={farmer.anim} flipped={farmer.flipped} />
+              <SpineFarmer anim={farmer.anim} />
             </div>
 
             {/* 꿀벌 — CSS로 좌→우 비행 */}
