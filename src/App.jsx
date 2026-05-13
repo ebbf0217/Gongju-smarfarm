@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
-import { SpineFarmer } from "./SpineFarmer";
+// SpineFarmer는 PMA 텍스처 문제로 미사용 — CSS 농부로 대체
+// import { SpineFarmer } from "./SpineFarmer";
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const TOTAL = 60;
@@ -87,6 +88,65 @@ function VentFan() {
       </g>
       <circle cx="13" cy="13" r="2.8" fill="#263238" />
       <circle cx="13" cy="13" r="1.3" fill="#607D8B" />
+    </svg>
+  );
+}
+
+// ─── CSS 농부 캐릭터 (항상 보임) ───
+function FarmerCSS({ anim, status }) {
+  const bad = status === 'bad';
+  const happy = status === 'optimal' || anim === 'dance';
+  return (
+    <svg className={`farmer-svg-char fc-${anim || 'idle'}`}
+      width="58" height="90" viewBox="0 0 58 90">
+      {/* 안전모 */}
+      <ellipse cx="29" cy="16" rx="18" ry="5.5" fill="#FFC107" stroke="#F57F17" strokeWidth="1.2"/>
+      <path d="M11,16 Q29,5 47,16Z" fill="#FF9800"/>
+      <rect x="9" y="14.5" width="40" height="5" rx="2.5" fill="#F57F17"/>
+      {/* 헤드 */}
+      <circle cx="29" cy="30" r="13" fill="#FFCC80" stroke="#FFB74D" strokeWidth="1.5"/>
+      {/* 눈 */}
+      {bad ? (<>
+        <ellipse cx="24" cy="29" rx="3" ry="3.5" fill="#3E2723" transform="rotate(-18,24,29)"/>
+        <ellipse cx="34" cy="29" rx="3" ry="3.5" fill="#3E2723" transform="rotate(18,34,29)"/>
+        <circle cx="24.5" cy="27.8" r="1.1" fill="white"/><circle cx="34.5" cy="27.8" r="1.1" fill="white"/>
+      </>) : happy ? (<>
+        <path d="M21,30 Q24,26.5 27,30" stroke="#3E2723" strokeWidth="2.4" fill="none" strokeLinecap="round"/>
+        <path d="M31,30 Q34,26.5 37,30" stroke="#3E2723" strokeWidth="2.4" fill="none" strokeLinecap="round"/>
+      </>) : (<>
+        <circle cx="24" cy="29" r="3" fill="#3E2723"/>
+        <circle cx="34" cy="29" r="3" fill="#3E2723"/>
+        <circle cx="25" cy="28" r="1.2" fill="white"/><circle cx="35" cy="28" r="1.2" fill="white"/>
+      </>)}
+      {/* 입 */}
+      {bad
+        ? <path d="M22,36 Q29,32.5 36,36" stroke="#BF360C" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+        : <path d="M22,35 Q29,40 36,35" stroke="#BF360C" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+      }
+      {/* 볼 */}
+      <ellipse cx="20" cy="33" rx="4" ry="2.5" fill="rgba(255,120,80,0.32)"/>
+      <ellipse cx="38" cy="33" rx="4" ry="2.5" fill="rgba(255,120,80,0.32)"/>
+      {/* 목 */}
+      <rect x="25" y="41" width="8" height="5" rx="2" fill="#FFCC80"/>
+      {/* 흰 가운 */}
+      <rect x="12" y="45" width="34" height="30" rx="8" fill="white" stroke="#E0E0E0" strokeWidth="1.5"/>
+      <path d="M19,45 L29,56 L39,45" fill="#F0F4F8" stroke="#CFD8DC" strokeWidth="1"/>
+      <rect x="13" y="52" width="9" height="7" rx="2" fill="white" stroke="#E0E0E0" strokeWidth="1"/>
+      {/* 왼쪽 팔 */}
+      <rect x="2" y="46" width="12" height="9" rx="5" fill="white" stroke="#E0E0E0" strokeWidth="1.2"/>
+      <ellipse cx="3" cy="56" rx="5" ry="4" fill="#FFCC80"/>
+      {/* 오른쪽 팔 (태블릿 들고) */}
+      <rect x="44" y="46" width="12" height="9" rx="5" fill="white" stroke="#E0E0E0" strokeWidth="1.2"/>
+      <rect x="47" y="53" width="10" height="13" rx="2.5" fill="#1565C0" stroke="#0D47A1" strokeWidth="0.8"/>
+      <rect x="48" y="54" width="8" height="11" rx="1.5" fill="#90CAF9"/>
+      <rect x="49" y="55" width="6" height="1.5" rx="0.8" fill="rgba(255,255,255,0.8)"/>
+      <rect x="49" y="57.5" width="4" height="1.5" rx="0.8" fill="rgba(255,255,255,0.6)"/>
+      {/* 다리 */}
+      <rect x="15" y="73" width="11" height="16" rx="5" fill="#37474F"/>
+      <rect x="32" y="73" width="11" height="16" rx="5" fill="#37474F"/>
+      {/* 부츠 */}
+      <ellipse cx="20" cy="90" rx="10" ry="4" fill="#1A237E"/>
+      <ellipse cx="38" cy="90" rx="10" ry="4" fill="#1A237E"/>
     </svg>
   );
 }
@@ -766,7 +826,7 @@ export default function App() {
             <div className={`farmer-wrap ${farmer.anim}`}
               style={{ top: `${(farmer.top ?? 0.10) * 100}%` }}>
               {farmer.bubble && <div className="bubble">{farmer.bubble}</div>}
-              <SpineFarmer anim={farmer.anim} />
+              <FarmerCSS anim={farmer.anim} status={status} />
             </div>
 
             {/* 꿀벌 — CSS로 좌→우 비행 */}

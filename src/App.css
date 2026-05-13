@@ -713,43 +713,68 @@ html,body{
   100%{transform:translateX(-50%) translateY(-32px);opacity:0}
 }
 
-/* ── 농부 (Spine 2D) — 중앙통로 위아래 이동 ── */
+/* ── 농부 CSS 캐릭터 ── */
 .farmer-wrap{
   position:absolute;
-  left:50%;              /* 항상 중앙 통로 */
-  top:10%;               /* state로 덮어씀 */
+  left:50%;
+  top:10%;
   z-index:20;
   pointer-events:none;
   transform:translateX(-50%);
-  transition:top .48s ease-in-out;   /* 부드러운 위아래 이동 */
+  transition:top .48s ease-in-out;
   overflow:visible;
-  filter:drop-shadow(0 6px 16px rgba(0,0,0,.75));
 }
-/* 모든 애니메이션에 translateX(-50%) 포함 → 중앙정렬 유지 */
-.farmer-wrap.dance{animation:fDance .45s ease-in-out 2}
-.farmer-wrap.worry{animation:fWorry .38s ease-in-out 2}
-.farmer-wrap.jump{animation:fJump .5s cubic-bezier(.34,1.56,.64,1)}
-.farmer-wrap.surprise{animation:fSurprise .4s ease-in-out}
-@keyframes fDance{
-  0%,100%{transform:translateX(-50%) translateY(0) rotate(0)}
-  25%{transform:translateX(-50%) translateY(-12px) rotate(-8deg)}
-  75%{transform:translateX(-50%) translateY(-7px) rotate(8deg)}
+
+/* SVG 캐릭터 */
+.farmer-svg-char{
+  display:block;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.65));
 }
-@keyframes fWorry{
-  0%,100%{transform:translateX(-50%)}
-  25%{transform:translateX(calc(-50% - 6px)) rotate(-6deg)}
-  75%{transform:translateX(calc(-50% + 6px)) rotate(6deg)}
+/* 기본 아이들: 살짝 위아래 호흡 */
+.farmer-svg-char.fc-idle,
+.farmer-svg-char.fc-walk,
+.farmer-svg-char.fc-{
+  animation:fcBob .7s ease-in-out infinite alternate;
 }
-@keyframes fJump{
-  0%{transform:translateX(-50%) translateY(0) scale(1)}
-  40%{transform:translateX(-50%) translateY(-22px) scale(1.2)}
-  100%{transform:translateX(-50%) translateY(0) scale(1)}
+@keyframes fcBob{
+  from{transform:translateY(0) rotate(-1deg)}
+  to{transform:translateY(-5px) rotate(1deg)}
 }
-@keyframes fSurprise{
-  0%{transform:translateX(-50%) scale(1)}
-  30%{transform:translateX(-50%) scale(1.3) rotate(-8deg)}
-  100%{transform:translateX(-50%) scale(1)}
+/* 춤/최적 */
+.farmer-svg-char.fc-dance{
+  animation:fcDance .38s ease-in-out infinite alternate;
 }
+@keyframes fcDance{
+  from{transform:rotate(-11deg) translateY(-6px) scale(1.05)}
+  to{transform:rotate(11deg) translateY(6px) scale(1.05)}
+}
+/* 점프/수확 */
+.farmer-svg-char.fc-jump{
+  animation:fcJump .52s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes fcJump{
+  0%{transform:translateY(0) scale(1)}
+  38%{transform:translateY(-36px) scale(1.2) rotate(-6deg)}
+  100%{transform:translateY(0) scale(1)}
+}
+/* 걱정 */
+.farmer-svg-char.fc-worry{
+  animation:fcWorry .28s ease-in-out infinite alternate;
+}
+@keyframes fcWorry{
+  from{transform:translateX(-4px) rotate(-5deg)}
+  to{transform:translateX(4px) rotate(5deg)}
+}
+/* 놀람 */
+.farmer-svg-char.fc-surprise{
+  animation:fcSurprise .38s ease-in-out;
+}
+@keyframes fcSurprise{
+  0%{transform:scale(1) rotate(0)}
+  30%{transform:scale(1.45) rotate(-10deg)}
+  100%{transform:scale(1) rotate(0)}
+}
+/* farmer-wrap 자체 애니메이션은 SVG 내부 fc-* 클래스로 처리 */
 
 .bubble{
   position:absolute;bottom:calc(100% + 4px);left:50%;
@@ -862,11 +887,13 @@ html,body{
 }
 
 @keyframes shake{
-  0%,100%{transform:translateX(0)}
-  20%{transform:translateX(-6px)}40%{transform:translateX(6px)}
-  60%{transform:translateX(-4px)}80%{transform:translateX(4px)}
+  0%,100%{transform:translateX(-50%)}
+  20%{transform:translateX(calc(-50% - 3px))}
+  40%{transform:translateX(calc(-50% + 3px))}
+  60%{transform:translateX(calc(-50% - 2px))}
+  80%{transform:translateX(calc(-50% + 2px))}
 }
-.shaking{animation:shake .35s ease-in-out}
+.shaking{animation:shake .28s ease-in-out}
 
 /* ── BOTTOM PANEL ── */
 .bottom-panel{
