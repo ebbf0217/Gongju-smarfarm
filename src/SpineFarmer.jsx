@@ -9,7 +9,7 @@ const ANIM_MAP = {
   dance: 'run', worry: 'idle', surprise: 'shoot',
 };
 
-const W = 130, H = 150;
+const W = 200, H = 240;
 
 const _cache = { mgr: null, p: null };
 function loadAssets() {
@@ -43,7 +43,7 @@ export function SpineFarmer({ anim = '' }) {
       const renderer = new SkeletonRenderer(ctx);
       const atlas = mgr.require('spineboy-pma.atlas');
       const binary = new SkeletonBinary(new AtlasAttachmentLoader(atlas));
-      binary.scale = 0.22;
+      binary.scale = 0.35;
       const data = binary.readSkeletonData(mgr.require('spineboy-pro.skel'));
       const skeleton = new Skeleton(data);
       skeleton.setToSetupPose();
@@ -69,7 +69,7 @@ export function SpineFarmer({ anim = '' }) {
 
         ctx.clearRect(0, 0, W, H);
         skeleton.x = W / 2;
-        skeleton.y = H - 12;
+        skeleton.y = H - 18;
         state.update(dt);
         state.apply(skeleton);
         skeleton.updateWorldTransform(firstFrame ? Physics.reset : Physics.update);

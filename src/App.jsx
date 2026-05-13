@@ -73,7 +73,7 @@ function PlantSVG({ stage, bad }) {
 // ─── Ventilation Fan SVG ───
 function VentFan() {
   return (
-    <svg className="vent-fan-svg" viewBox="0 0 26 26" width="22" height="22">
+    <svg className="vent-fan-svg" viewBox="0 0 26 26" width="34" height="34">
       <circle cx="13" cy="13" r="12" fill="#37474F" stroke="#546E7A" strokeWidth="1.5" />
       <line x1="4" y1="13" x2="22" y2="13" stroke="#546E7A" strokeWidth="1" opacity="0.5" />
       <line x1="13" y1="4" x2="13" y2="22" stroke="#546E7A" strokeWidth="1" opacity="0.5" />
@@ -133,18 +133,19 @@ function calcPrecision(s) {
   return (p(s.temp,22,26) + p(s.hum,60,75) + p(s.co2,700,1000) + p(s.water,45,70) + p(s.led,60,85)) / 5;
 }
 
-// precAcc = Σ(calcPrecision * 45) per tick — max ~2700 for 60s perfect
+// precAcc = Σ(max(precision-0.5,0) * 15) — max ~450 for 60s near-perfect
+// + coins*4 + health*4
 function getScore(health, coins, precAcc) {
-  return Math.round(precAcc) + Math.round(coins * 8) + Math.round(health * 7);
+  return Math.round(precAcc) + Math.round(coins * 4) + Math.round(health * 4);
 }
 
 function getGrade(score) {
-  if (score >= 4800) return { grade: "S+", label: "👑 황금 딸기왕! 완벽해요!", emoji: "👑" };
-  if (score >= 3500) return { grade: "S",  label: "🏆 전설의 딸기 농부!", emoji: "🏅" };
-  if (score >= 2500) return { grade: "A",  label: "🌟 훌륭한 농부!", emoji: "🥇" };
-  if (score >= 1600) return { grade: "B",  label: "👍 잘 했어요!", emoji: "🥈" };
-  if (score >= 900)  return { grade: "C",  label: "🌱 성장하는 농부!", emoji: "🥉" };
-  if (score >= 450)  return { grade: "D",  label: "💪 다시 도전!", emoji: "😅" };
+  if (score >= 2000) return { grade: "S+", label: "👑 황금 딸기왕! 완벽해요!", emoji: "👑" };
+  if (score >= 1600) return { grade: "S",  label: "🏆 전설의 딸기 농부!", emoji: "🏅" };
+  if (score >= 1200) return { grade: "A",  label: "🌟 훌륭한 농부!", emoji: "🥇" };
+  if (score >= 800)  return { grade: "B",  label: "👍 잘 했어요!", emoji: "🥈" };
+  if (score >= 480)  return { grade: "C",  label: "🌱 성장하는 농부!", emoji: "🥉" };
+  if (score >= 220)  return { grade: "D",  label: "💪 다시 도전!", emoji: "😅" };
   return                    { grade: "F",  label: "😭 딸기가 힘들어요...", emoji: "😭" };
 }
 
@@ -351,9 +352,10 @@ export default function App() {
       const coinMult = curPhase;
 
       // 매 초 정밀도 누적 (적정 중심 근접도 × 45)
-      const prec = calcPrecision(cv);
-      precAccRef.current += prec * 45;
-      setLiveScore(Math.round(precAccRef.current + cv.coins * 8 + cv.health * 7));
+      // 적정 범위 중심에 가까울수록 점수 — 0.5 이상만 인정 (초반 무료 점수 방지)
+      const prec = Math.max(calcPrecision(cv) - 0.5, 0);
+      precAccRef.current += prec * 15;
+      setLiveScore(Math.round(precAccRef.current + cv.coins * 4 + cv.health * 4));
 
       let pen = 0;
       if (cv.temp < 22 || cv.temp > 26) pen += Math.abs(cv.temp - 24) * 0.28;
