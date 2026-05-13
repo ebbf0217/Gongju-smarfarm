@@ -123,16 +123,29 @@ function getStatus(s) {
   return "bad";
 }
 
-function getScore(health, coins) {
-  return clamp(Math.round(health * 8 + coins * 20), 0, 1200);
+// 각 파라미터가 최적 중심에 얼마나 가까운지 (0~1)
+function calcPrecision(s) {
+  const p = (v, lo, hi) => {
+    if (v < lo || v > hi) return 0;
+    const c = (lo + hi) / 2, r = (hi - lo) / 2;
+    return 1 - Math.abs(v - c) / r;
+  };
+  return (p(s.temp,22,26) + p(s.hum,60,75) + p(s.co2,700,1000) + p(s.water,45,70) + p(s.led,60,85)) / 5;
+}
+
+// precAcc = Σ(calcPrecision * 45) per tick — max ~2700 for 60s perfect
+function getScore(health, coins, precAcc) {
+  return Math.round(precAcc) + Math.round(coins * 8) + Math.round(health * 7);
 }
 
 function getGrade(score) {
-  if (score >= 1000) return { grade: "S", label: "🏆 전설의 딸기 농부!", emoji: "👑" };
-  if (score >= 750) return { grade: "A", label: "🌟 훌륭한 농부!", emoji: "🥇" };
-  if (score >= 500) return { grade: "B", label: "👍 잘 했어요!", emoji: "🥈" };
-  if (score >= 250) return { grade: "C", label: "🌱 성장하는 농부!", emoji: "🥉" };
-  return { grade: "D", label: "💪 다시 도전!", emoji: "😅" };
+  if (score >= 4800) return { grade: "S+", label: "👑 황금 딸기왕! 완벽해요!", emoji: "👑" };
+  if (score >= 3500) return { grade: "S",  label: "🏆 전설의 딸기 농부!", emoji: "🏅" };
+  if (score >= 2500) return { grade: "A",  label: "🌟 훌륭한 농부!", emoji: "🥇" };
+  if (score >= 1600) return { grade: "B",  label: "👍 잘 했어요!", emoji: "🥈" };
+  if (score >= 900)  return { grade: "C",  label: "🌱 성장하는 농부!", emoji: "🥉" };
+  if (score >= 450)  return { grade: "D",  label: "💪 다시 도전!", emoji: "😅" };
+  return                    { grade: "F",  label: "😭 딸기가 힘들어요...", emoji: "😭" };
 }
 
 
@@ -200,22 +213,27 @@ export default function App() {
   const [pops, setPops] = useState({});
   const [farmer, setFarmer] = useState({ pos: 0.1, anim: "", bubble: "" });
   const [shake, setShake] = useState(false);
-  const [bee, setBee] = useState({ x: 30, y: 30, visible: false });
+  const [bee, setBee] = useState({ y: 30, visible: false, id: 0 });
   const [ranking, setRanking] = useState(() => JSON.parse(localStorage.getItem("gjue_farm") || "[]"));
   const [finalScore, setFinalScore] = useState(0);
   const [animTick, setAnimTick] = useState(0);
   const [combo, setCombo] = useState(0);
   const [streak, setStreak] = useState(0);
   const [phase, setPhase] = useState(1);
+  const [liveScore, setLiveScore] = useState(0);
 
   const pRef = useRef([]);
   const timerRef = useRef(null);
   const eventRef = useRef(null);
   const beeRef = useRef(null);
   const animRef = useRef(null);
+  const farmerWalkRef = useRef(null);
   const vRef = useRef(vals);
   const tRef = useRef(time);
   const pRef2 = useRef(plants);
+  const precAccRef = useRef(0);    // 누적 정밀도 점수
+  const farmerDirRef = useRef(1);  // 1=오른쪽, -1=왼쪽
+  const farmerPosRef = useRef(0.46);
   vRef.current = vals;
   tRef.current = time;
   pRef2.current = plants;
@@ -263,9 +281,10 @@ export default function App() {
     clearInterval(timerRef.current);
     clearInterval(eventRef.current);
     clearInterval(beeRef.current);
+    clearInterval(farmerWalkRef.current);
     cancelAnimationFrame(animRef.current);
     const v = vRef.current;
-    const sc = getScore(v.health, v.coins);
+    const sc = getScore(v.health, v.coins, precAccRef.current);
     setFinalScore(sc);
     const entry = { name: nickname || "딸기농부", score: sc, health: Math.round(v.health), coins: v.coins };
     const next = [...JSON.parse(localStorage.getItem("gjue_farm") || "[]"), entry]
@@ -276,20 +295,35 @@ export default function App() {
   }, [nickname]);
 
   const startGame = useCallback(() => {
-    [timerRef, eventRef, beeRef].forEach(r => clearInterval(r.current));
+    [timerRef, eventRef, beeRef, farmerWalkRef].forEach(r => clearInterval(r.current));
     cancelAnimationFrame(animRef.current);
     pRef.current = [];
+    precAccRef.current = 0;
+    farmerDirRef.current = 1;
+    farmerPosRef.current = 0.46;
     setVals(initVals());
     setTime(TOTAL);
     setPlants(initPlants());
     setEvent(null);
     setPops({});
-    setFarmer({ pos: 0.46, anim: "", bubble: "화이팅! 🍓" });
-    setTimeout(() => setFarmer(f => ({ ...f, bubble: "" })), 2000);
+    setLiveScore(0);
+    setFarmer({ pos: 0.46, anim: "dance", bubble: "화이팅! 🍓", flipped: false });
+    setTimeout(() => setFarmer(f => ({ ...f, anim: "", bubble: "" })), 2000);
     setCombo(0);
     setStreak(0);
     setPhase(1);
     setScreen("game");
+
+    // 농부 통로 자동 왕복
+    farmerWalkRef.current = setInterval(() => {
+      if (tRef.current <= 0) return;
+      const step = 0.022;
+      let np = farmerPosRef.current + farmerDirRef.current * step;
+      if (np >= 0.57) { farmerDirRef.current = -1; np = 0.57; }
+      else if (np <= 0.38) { farmerDirRef.current = 1; np = 0.38; }
+      farmerPosRef.current = np;
+      setFarmer(f => ({ ...f, pos: np, flipped: farmerDirRef.current < 0 }));
+    }, 550);
 
     // main tick
     timerRef.current = setInterval(() => {
@@ -315,6 +349,11 @@ export default function App() {
 
       const curPhase = ct > 40 ? 1 : ct > 20 ? 2 : 3;
       const coinMult = curPhase;
+
+      // 매 초 정밀도 누적 (적정 중심 근접도 × 45)
+      const prec = calcPrecision(cv);
+      precAccRef.current += prec * 45;
+      setLiveScore(Math.round(precAccRef.current + cv.coins * 8 + cv.health * 7));
 
       let pen = 0;
       if (cv.temp < 22 || cv.temp > 26) pen += Math.abs(cv.temp - 24) * 0.28;
@@ -413,10 +452,10 @@ export default function App() {
       setTimeout(() => setEvent(null), 3500);
     }, 10000);
 
-    // bee
+    // bee — CSS 애니메이션으로 좌→우 비행
     const spawnBee = () => {
-      setBee({ x: -5, y: 20 + Math.random() * 40, visible: true });
-      setTimeout(() => setBee(b => ({ ...b, visible: false })), 5000);
+      setBee({ y: 15 + Math.random() * 55, visible: true, id: Date.now() });
+      setTimeout(() => setBee(b => ({ ...b, visible: false })), 5500);
     };
     beeRef.current = setInterval(spawnBee, 8000);
     setTimeout(spawnBee, 3000);
@@ -442,19 +481,17 @@ export default function App() {
   }, [spawnP, setFarmerReact]);
 
   const clickBee = useCallback(() => {
-    spawnP("bee", (bee.x + 5) / 100, bee.y / 100);
+    spawnP("bee", 0.5, bee.y / 100);
     setVals(prev => ({ ...prev, coins: prev.coins + 2 }));
     setBee(b => ({ ...b, visible: false }));
-  }, [bee, spawnP]);
+  }, [bee.y, spawnP]);
 
   // derived
   const skyClass = vals.temp > 28 ? "sky-hot" : vals.temp < 20 ? "sky-cold" : "sky-day";
   const ledPct = vals.led / 100;
-  // 실제 스마트팜 - 따뜻한 백색 LED
   const ledColor = `hsl(${55 - ledPct * 10},${5 + ledPct * 18}%,${12 + ledPct * 83}%)`;
   const ledGlow = `0 0 ${8 + ledPct * 22}px ${3 + ledPct * 14}px rgba(255,252,230,${0.15 + ledPct * 0.75})`;
-  const mistOp = vals.hum > 78 ? Math.min((vals.hum - 78) / 16, 0.9) : vals.hum < 50 ? 0.04 : (vals.hum - 50) / 55 * 0.3;
-  const hazeOp = vals.temp > 28 ? Math.min((vals.temp - 28) / 8, 0.8) : 0;
+  const mistOp = vals.hum > 78 ? Math.min((vals.hum - 78) / 16, 0.9) : 0;
   const hasFungus = vals.hum > 83;
   const co2Op = vals.co2 < 650 ? 0.15 : 0.75;
   const waterOp = vals.water < 45 ? 0.2 : 0.85;
@@ -463,6 +500,16 @@ export default function App() {
   const isRush = time <= 20;
   const stLabel = status === "optimal" ? "🍓 최적! 코인+" + (isRush ? 3 : phase) + "/초" : status === "normal" ? "🌱 보통" : "🥀 위험!";
   const streakMult = streak >= 20 ? 3 : streak >= 10 ? 2 : 1;
+
+  // ── 환경 시각 효과 강도 (0~1) ──
+  const envHot   = clamp((vals.temp - 26) / 12, 0, 1);   // 26~38°C
+  const envCold  = clamp((22 - vals.temp) / 10, 0, 1);   // 22~12°C
+  const envFog   = clamp((vals.hum - 72) / 20, 0, 1);    // 72~92%
+  const envDry   = clamp((52 - vals.hum) / 28, 0, 1);    // 52~24%
+  const envCO2hi = clamp((vals.co2 - 950) / 300, 0, 1);  // 950~1250ppm
+  const envDrought = clamp((40 - vals.water) / 35, 0, 1);// 40~5%
+  const envBright  = clamp((vals.led - 78) / 17, 0, 1);  // 78~95%
+  const envDark    = clamp((52 - vals.led) / 28, 0, 1);  // 52~24%
 
   // ── SCREENS ──
   if (screen !== "game") {
@@ -474,20 +521,32 @@ export default function App() {
             <span className="game-logo">🍓</span>
             <div className="game-title">스마트팜 게임</div>
             <div className="game-tagline">60초 안에 딸기를 키우고 수확하세요!</div>
-            <input className="name-input" value={nickname}
-              onChange={e => setNickname(e.target.value)}
-              placeholder="농부 이름을 입력하세요" maxLength={10} />
-            <button className="btn-start" onClick={startGame}>🌱 게임 시작!</button>
-            <button className="btn-rank" onClick={() => setScreen("ranking")}>🏆 랭킹 보기</button>
+
+            {/* 게임 설명 */}
+            <div className="how-to-play">
+              <div className="htp-title">📖 게임 방법</div>
+              <div className="htp-steps">
+                <div className="htp-step"><span className="htp-num">1</span><span>아래 5개 환경 지표를 <b>적정 범위</b>로 유지하세요</span></div>
+                <div className="htp-step"><span className="htp-num">2</span><span>조건이 맞으면 딸기가 자라고 <b>자동 수확</b>!</span></div>
+                <div className="htp-step"><span className="htp-num">3</span><span>40초 → <b>2배 코인</b>, 20초 → <b>3배 러시!</b></span></div>
+                <div className="htp-step"><span className="htp-num">4</span><span><b>꿀벌</b>이 나타나면 탭하면 보너스 코인!</span></div>
+                <div className="htp-step"><span className="htp-num">5</span><span>건강도와 코인으로 <b>최고 점수</b>를 노려요</span></div>
+              </div>
+            </div>
+
             <div className="guide-pills">
               <span className="guide-pill">🌡️ 온도 22~26℃</span>
               <span className="guide-pill">💧 습도 60~75%</span>
               <span className="guide-pill">💨 CO₂ 700~1000</span>
               <span className="guide-pill">🚿 물 45~70%</span>
               <span className="guide-pill">💡 LED 60~85%</span>
-              <span className="guide-pill">🍓 익으면 탭!</span>
-              <span className="guide-pill">🐝 꿀벌 탭 보너스!</span>
             </div>
+
+            <input className="name-input" value={nickname}
+              onChange={e => setNickname(e.target.value)}
+              placeholder="농부 이름을 입력하세요" maxLength={10} />
+            <button className="btn-start" onClick={startGame}>🌱 게임 시작!</button>
+            <button className="btn-rank" onClick={() => setScreen("ranking")}>🏆 랭킹 보기</button>
           </div>
         )}
         {screen === "result" && (() => {
@@ -542,7 +601,7 @@ export default function App() {
         <div className="hud-stats">
           <div className={`stat-chip${vals.health < 30 ? " danger" : ""}`}>❤️{Math.round(vals.health)}</div>
           <div className="stat-chip">🪙{vals.coins}</div>
-          <div className="stat-chip">⭐{score}</div>
+          <div className="stat-chip">⭐{liveScore}</div>
           {isRush && <div className="stat-chip rush-chip">🔥RUSH!</div>}
           {streakMult > 1 && !isRush && <div className="stat-chip streak-chip">×{streakMult}🔗</div>}
         </div>
@@ -554,7 +613,6 @@ export default function App() {
         <div className={`sky ${skyClass}`} />
         <Clouds />
         <div className="sun">☀️</div>
-        <div className="haze" style={{ opacity: hazeOp }} />
 
         <div className="greenhouse">
           {/* smart farm top panel */}
@@ -587,13 +645,54 @@ export default function App() {
               {[0,1,2,3,4].map(i => <div key={i} className="nozzle" style={{ left: `${12 + i * 18}%` }} />)}
             </div>
 
-            {/* effects */}
-            <div className="mist" style={{ opacity: mistOp }} />
-            {hasFungus && (
-              <div className="fungus" style={{ opacity: Math.min((vals.hum - 83) / 12, 0.7) }}>
-                🍄🍄🍄
+            {/* ─── 환경 시각 효과 ─── */}
+
+            {/* 온도 높음: 주황빛 열기 + 아지랑이 */}
+            {envHot > 0 && (
+              <div className="env-hot" style={{ opacity: envHot }}>
+                {[0,1,2,3,4].map(i => (
+                  <div key={i} className="heat-wave-line" style={{ bottom:`${14+i*14}%`, animationDuration:`${1.0+i*0.22}s`, animationDelay:`${i*0.18}s` }} />
+                ))}
               </div>
             )}
+            {/* 온도 낮음: 파란 냉기 + 눈송이 */}
+            {envCold > 0 && (
+              <div className="env-cold" style={{ opacity: Math.min(envCold*1.2,1) }}>
+                {[0,1,2,3,4,5].map(i => (
+                  <span key={i} className="snow-petal" style={{ left:`${5+i*18}%`, fontSize:`${12+i%2*7}px`, animationDuration:`${2.6+i*0.38}s`, animationDelay:`${i*0.44}s` }}>❄</span>
+                ))}
+              </div>
+            )}
+            {/* 습도 높음: 짙은 안개 + 물방울 */}
+            {envFog > 0 && (
+              <div className="env-fog" style={{ opacity: envFog }}>
+                <div className="fog-layer fl1" /><div className="fog-layer fl2" /><div className="fog-layer fl3" />
+                {vals.hum > 78 && [0,1,2,3,4,5,6].map(i => (
+                  <span key={i} className="fog-drip" style={{ left:`${3+i*14}%`, animationDuration:`${1.0+i%3*0.35}s`, animationDelay:`${i*0.22}s` }}>💧</span>
+                ))}
+              </div>
+            )}
+            {/* 습도 낮음: 노란 건조 먼지 */}
+            {envDry > 0 && <div className="env-dry" style={{ opacity: envDry * 0.8 }} />}
+            {/* CO₂ 높음: 초록 가스 구름 */}
+            {envCO2hi > 0 && (
+              <div className="env-co2hi" style={{ opacity: envCO2hi }}>
+                {[0,1,2].map(i => (
+                  <div key={i} className="gas-puff" style={{ left:`${15+i*32}%`, animationDuration:`${2.4+i*0.7}s`, animationDelay:`${i*0.75}s` }} />
+                ))}
+              </div>
+            )}
+            {/* 물 부족: 주황빛 가뭄 */}
+            {envDrought > 0.2 && <div className="env-drought" style={{ opacity: envDrought * 0.85 }} />}
+            {/* LED 밝음: 눈부신 흰빛 */}
+            {envBright > 0 && <div className="env-led-bright" style={{ opacity: envBright * 0.72 }} />}
+            {/* LED 어두움: 암전 */}
+            {envDark > 0 && <div className="env-led-dark" style={{ opacity: Math.min(envDark*0.9, 0.88) }} />}
+            {/* 고습도 곰팡이 */}
+            {hasFungus && (
+              <div className="fungus" style={{ opacity: Math.min((vals.hum - 83) / 12, 0.7) }}>🍄🍄🍄</div>
+            )}
+            <div className="mist" style={{ opacity: mistOp }} />
 
             {/* CO₂ 배출구 */}
             <div className="co2-row" style={{ opacity: co2Op }}>
@@ -670,12 +769,12 @@ export default function App() {
             {/* 농부 - 중앙 통로 */}
             <div className={`farmer-wrap ${farmer.anim}`} style={{ left: `${farmer.pos * 100}%` }}>
               {farmer.bubble && <div className="bubble">{farmer.bubble}</div>}
-              <SpineFarmer anim={farmer.anim} />
+              <SpineFarmer anim={farmer.anim} flipped={farmer.flipped} />
             </div>
 
-            {/* 꿀벌 */}
+            {/* 꿀벌 — CSS로 좌→우 비행 */}
             {bee.visible && (
-              <div className="bee" style={{ left: `${bee.x}%`, top: `${bee.y}%` }} onClick={clickBee}>
+              <div key={bee.id} className="bee" style={{ top: `${bee.y}%` }} onClick={clickBee}>
                 <div className="bee-body">🐝</div>
                 <div className="bee-tap">TAP!</div>
               </div>
