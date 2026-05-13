@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vite *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const s = require\\('./node_modules/@esotericsoftware/spine-canvas/dist/iife/spine-canvas.js'\\); console.log\\('ok'\\)\")",
+      "PowerShell($pkg = Get-Content \"c:\\\\Users\\\\USER\\\\Desktop\\\\smartfarm\\\\node_modules\\\\@esotericsoftware\\\\spine-canvas\\\\package.json\" | ConvertFrom-Json; Write-Host \"version: $\\($pkg.version\\)\"; Write-Host \"main: $\\($pkg.main\\)\"; Write-Host \"module: $\\($pkg.module\\)\"; Get-ChildItem \"c:\\\\Users\\\\USER\\\\Desktop\\\\smartfarm\\\\node_modules\\\\@esotericsoftware\\\\spine-canvas\" -Name)",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\USER\\\\Desktop\\\\smartfarm\\\\public\\\\spine\")",
+      "PowerShell($tree | Where-Object { $_.path -match \"\\\\.skel$\" } | Select-Object -ExpandProperty path | Select-Object -First 20)",
+      "PowerShell($tree | Where-Object { $_.path -match \"\\\\.atlas$\" } | Select-Object -ExpandProperty path | Select-Object -First 20)",
+      "PowerShell(Write-Host \"Tree count: $\\($tree.Count\\)\"; $tree | Select-Object -First 10 | ForEach-Object { Write-Host $_.path })",
+      "PowerShell(Get-ChildItem \"c:\\\\Users\\\\USER\\\\Desktop\\\\smartfarm\\\\node_modules\\\\@esotericsoftware\\\\spine-core\\\\dist\" | Where-Object { $_.Name -match \"Skeleton\" } | Select-Object Name)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{size_download}\" http://localhost:5173/spine/spineboy-pma.atlas)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{size_download}\" http://localhost:5173/spine/spineboy-pro.skel)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{size_download}\" http://localhost:5173/spine/spineboy-pma.png)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/spine/spineboy-pro.skel)"
+    ]
+  }
+}
