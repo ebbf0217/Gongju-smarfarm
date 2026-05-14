@@ -210,23 +210,50 @@ function getGrade(score) {
 }
 
 
-// ─── Gauge item ───
-function GItem({ icon, value, unit, lo, hi, min, max, color, onM, onP }) {
+// ─── Gauge item (범위는 공지판에서 표시, 여기선 값+버튼만) ───
+function GItem({ icon, value, unit, lo, hi, onM, onP }) {
   const good = value >= lo && value <= hi;
   const warn = !good && ((value >= lo - 12 && value < lo) || (value > hi && value <= hi + 12));
   const cls = good ? "ok" : warn ? "warn" : "danger";
-  const pct = clamp(((value - min) / (max - min)) * 100, 2, 100);
-  const barC = good ? color : warn ? "#FF9500" : "#E53935";
   const disp = unit === "ppm" ? `${Math.round(value)}` : unit === "℃" ? `${Math.round(value)}℃` : `${Math.round(value)}%`;
   return (
     <div className={`g-item ${cls}`}>
       <div className="g-icon">{icon}</div>
-      <div className="g-val">{disp}{unit === "ppm" ? <span style={{ fontSize: 8 }}>ppm</span> : ""}</div>
-      <div className="g-range">{lo}~{hi}{unit}</div>
-      <div className="g-bar-bg"><div className="g-bar-fill" style={{ width: `${pct}%`, background: barC }} /></div>
+      <div className="g-val">{disp}{unit === "ppm" ? <span className="g-ppm">ppm</span> : ""}</div>
       <div className="g-btns">
         <button className="g-btn" onClick={onM}>▼</button>
         <button className="g-btn" onClick={onP}>▲</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── 실험실 공지판 ───
+function LabBoard({ vals }) {
+  const rows = [
+    { icon: '🌡️', name: '온도', lo: 22, hi: 26, val: vals.temp, unit: '℃', disp: `${Math.round(vals.temp)}℃` },
+    { icon: '💧', name: '습도', lo: 60, hi: 75, val: vals.hum, unit: '%', disp: `${Math.round(vals.hum)}%` },
+    { icon: '💨', name: 'CO₂', lo: 700, hi: 1000, val: vals.co2, unit: 'ppm', disp: `${Math.round(vals.co2)}` },
+    { icon: '🚿', name: '수분', lo: 45, hi: 70, val: vals.water, unit: '%', disp: `${Math.round(vals.water)}%` },
+    { icon: '💡', name: 'LED', lo: 60, hi: 85, val: vals.led, unit: '%', disp: `${Math.round(vals.led)}%` },
+  ];
+  return (
+    <div className="lab-board">
+      <div className="lb-title">🔬 스마트팜 최적 환경 조건표</div>
+      <div className="lb-rows">
+        {rows.map(r => {
+          const ok = r.val >= r.lo && r.val <= r.hi;
+          return (
+            <div key={r.name} className={`lb-row ${ok ? 'lb-ok' : 'lb-bad'}`}>
+              <span className="lb-icon">{r.icon}</span>
+              <span className="lb-name">{r.name}</span>
+              <span className="lb-range">{r.lo}~{r.hi}{r.unit === 'ppm' ? 'ppm' : r.unit}</span>
+              <span className={`lb-cur ${ok ? '' : 'lb-cur-warn'}`}>
+                {ok ? '✓' : '⚠'} {r.disp}{r.unit === 'ppm' ? 'ppm' : ''}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -644,25 +671,25 @@ export default function App() {
   // ── GAME ──
   return (
     <div className={`game-wrap${shake ? " shaking" : ""}`}>
-      {/* HUD */}
+      {/* HUD — 타이머 + 점수만 */}
       <div className="hud">
-        <div className="hud-name">🍓 공주교대 딸기농장 · {nickname || "딸기농부"}</div>
+        <div className="hud-left">
+          <div className="hud-name">🍓 공주교대 딸기농장</div>
+          {isRush && <div className="hud-rush">🔥 RUSH!</div>}
+        </div>
         <div className="timer-wrap">
-          <svg width="42" height="42" viewBox="0 0 42 42">
-            <circle cx="21" cy="21" r="17" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="4" />
-            <circle cx="21" cy="21" r="17" fill="none" stroke={timerColor} strokeWidth="4"
-              strokeDasharray="106.8" strokeDashoffset={106.8 * (1 - timerPct)}
-              strokeLinecap="round" transform="rotate(-90 21 21)"
+          <svg width="46" height="46" viewBox="0 0 46 46">
+            <circle cx="23" cy="23" r="19" fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="5" />
+            <circle cx="23" cy="23" r="19" fill="none" stroke={timerColor} strokeWidth="5"
+              strokeDasharray="119.4" strokeDashoffset={119.4 * (1 - timerPct)}
+              strokeLinecap="round" transform="rotate(-90 23 23)"
               style={{ transition: "stroke-dashoffset 1s linear, stroke .5s" }} />
           </svg>
           <div className="timer-num" style={{ color: timerColor }}>{time}</div>
         </div>
-        <div className="hud-stats">
-          <div className={`stat-chip${vals.health < 30 ? " danger" : ""}`}>❤️{Math.round(vals.health)}</div>
-          <div className="stat-chip">🪙{vals.coins}</div>
-          <div className="stat-chip">⭐{liveScore}</div>
-          {isRush && <div className="stat-chip rush-chip">🔥RUSH!</div>}
-          {streakMult > 1 && !isRush && <div className="stat-chip streak-chip">×{streakMult}🔗</div>}
+        <div className="hud-score-box">
+          <div className="hsb-label">SCORE</div>
+          <div className="hsb-value">{liveScore}</div>
         </div>
         {event && <div className="event-banner">{event.title} {event.msg}</div>}
       </div>
@@ -670,8 +697,9 @@ export default function App() {
       {/* SCENE */}
       <div className="scene">
         <div className={`sky ${skyClass}`} />
-        <Clouds />
-        <div className="sun">☀️</div>
+
+        {/* 실험실 공지판 — 온실 위 빈 공간 채움 */}
+        <LabBoard vals={vals} />
 
         <div className="greenhouse">
           {/* smart farm top panel */}
@@ -851,15 +879,15 @@ export default function App() {
       {/* BOTTOM PANEL */}
       <div className="bottom-panel">
         <div className="gauges">
-          <GItem icon="🌡️" value={vals.temp} unit="℃" lo={22} hi={26} min={10} max={40} color="#FF7043"
+          <GItem icon="🌡️" value={vals.temp} unit="℃" lo={22} hi={26}
             onM={() => ctrl("temp", -1)} onP={() => ctrl("temp", 1)} />
-          <GItem icon="💧" value={vals.hum} unit="%" lo={60} hi={75} min={20} max={95} color="#42A5F5"
+          <GItem icon="💧" value={vals.hum} unit="%" lo={60} hi={75}
             onM={() => ctrl("hum", -3)} onP={() => ctrl("hum", 3)} />
-          <GItem icon="💨" value={vals.co2} unit="ppm" lo={700} hi={1000} min={300} max={1300} color="#66BB6A"
+          <GItem icon="💨" value={vals.co2} unit="ppm" lo={700} hi={1000}
             onM={() => ctrl("co2", -50)} onP={() => ctrl("co2", 50)} />
-          <GItem icon="🚿" value={vals.water} unit="%" lo={45} hi={70} min={0} max={100} color="#29B6F6"
+          <GItem icon="🚿" value={vals.water} unit="%" lo={45} hi={70}
             onM={() => ctrl("water", -3)} onP={() => ctrl("water", 3)} />
-          <GItem icon="💡" value={vals.led} unit="%" lo={60} hi={85} min={20} max={100} color="#CE93D8"
+          <GItem icon="💡" value={vals.led} unit="%" lo={60} hi={85}
             onM={() => ctrl("led", -3)} onP={() => ctrl("led", 3)} />
         </div>
       </div>

@@ -192,25 +192,43 @@ html,body{
   .game-wrap{ box-shadow:0 0 60px rgba(0,0,0,.9); }
 }
 
-/* HUD */
+/* HUD — 타이머 + 점수만 */
 .hud{
   flex-shrink:0;
   background:linear-gradient(180deg,#1E3A28,#2A5038);
   border-bottom:2px solid #1A3020;
   padding:6px 10px;
-  display:flex;align-items:center;gap:6px;
+  display:flex;align-items:center;gap:8px;
   position:relative;z-index:30;
 }
-.hud-name{font-size:11px;color:#90EE90;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.timer-wrap{position:relative;width:40px;height:40px;flex-shrink:0}
-.timer-wrap svg{position:absolute;top:0;left:0}
-.timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold}
-.hud-stats{display:flex;gap:4px;flex-wrap:nowrap}
-.stat-chip{
-  background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.25);
-  border-radius:12px;padding:3px 7px;font-size:11px;color:white;white-space:nowrap;
+.hud-left{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.hud-name{font-size:11px;color:#90EE90;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-rush{
+  font-size:11px;font-weight:bold;
+  background:linear-gradient(135deg,#E53935,#FF9500);
+  color:white;border-radius:8px;padding:2px 7px;
+  display:inline-block;width:fit-content;
+  animation:rushPulse .35s ease-in-out infinite alternate;
 }
-.stat-chip.danger{background:rgba(220,40,40,0.5);animation:chipBlink .6s infinite alternate}
+
+/* 타이머 */
+.timer-wrap{position:relative;width:46px;height:46px;flex-shrink:0}
+.timer-wrap svg{position:absolute;top:0;left:0}
+.timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold}
+
+/* 점수 박스 — 크고 명확하게 */
+.hud-score-box{
+  flex-shrink:0;
+  background:rgba(255,215,0,0.15);
+  border:2px solid rgba(255,215,0,0.5);
+  border-radius:14px;
+  padding:4px 12px;
+  text-align:center;
+  min-width:72px;
+}
+.hsb-label{font-size:9px;color:#FFD700;letter-spacing:1px;font-weight:bold}
+.hsb-value{font-size:20px;font-weight:bold;color:#FFD700;line-height:1.1}
+
 @keyframes chipBlink{from{opacity:1}to{opacity:.5}}
 
 .rush-chip{
@@ -243,8 +261,49 @@ html,body{
   to{transform:translateX(-50%) scale(1) translateY(0);opacity:1}
 }
 
-/* scene — z-index:1 creates stacking context so children beat bottom-panel */
+/* scene */
 .scene{flex:1;position:relative;overflow:hidden;z-index:1}
+
+/* ── 실험실 공지판 ── */
+.lab-board{
+  position:absolute;
+  top:3%;left:3%;right:3%;
+  z-index:6;
+  background:linear-gradient(180deg,rgba(12,28,18,.95),rgba(18,40,25,.92));
+  border:1.5px solid rgba(100,200,130,.55);
+  border-radius:14px;
+  padding:8px 10px 9px;
+  box-shadow:0 4px 18px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.lb-title{
+  font-size:12px;font-weight:bold;
+  color:#A5D6A7;text-align:center;
+  letter-spacing:.8px;
+  padding-bottom:6px;margin-bottom:6px;
+  border-bottom:1px solid rgba(100,200,130,.3);
+}
+.lb-rows{display:flex;flex-direction:column;gap:3px}
+.lb-row{
+  display:grid;
+  grid-template-columns:22px 36px 1fr auto;
+  align-items:center;gap:6px;
+  padding:4px 6px;border-radius:7px;
+  border-left:3px solid transparent;
+  background:rgba(255,255,255,.04);
+}
+.lb-row.lb-ok{border-left-color:#66BB6A}
+.lb-row.lb-bad{border-left-color:#EF5350;background:rgba(239,83,80,.09)}
+.lb-icon{font-size:14px;text-align:center}
+.lb-name{font-size:11px;font-weight:bold;color:#C8E6C9}
+.lb-range{
+  font-size:11px;color:rgba(180,230,190,.75);
+  font-weight:bold;letter-spacing:.2px;
+}
+.lb-cur{
+  font-size:12px;font-weight:bold;
+  color:#E8F5E9;text-align:right;white-space:nowrap;
+}
+.lb-cur-warn{color:#FF8A80!important}
 
 .sky{position:absolute;inset:0;transition:background 2.5s}
 .sky-day{background:linear-gradient(180deg,#0D1B2A,#1A2D44 40%,#1E3A28 75%,#0D2010 100%)}
@@ -254,9 +313,9 @@ html,body{
 .cloud{display:none}
 .sun{display:none}
 
-/* ── 스마트팜 온실 ── */
+/* ── 스마트팜 온실 — 공지판 아래로 배치 ── */
 .greenhouse{
-  position:absolute;bottom:0;left:2%;right:2%;height:76%;
+  position:absolute;bottom:0;left:2%;right:2%;height:72%;
 }
 
 /* 산업용 상단 패널 */
@@ -913,8 +972,8 @@ html,body{
   position:relative;
   background:rgba(30,50,35,0.9);
   border:2px solid rgba(100,150,110,0.4);
-  border-radius:10px;padding:4px 2px 3px;
-  display:flex;flex-direction:column;align-items:center;gap:1px;
+  border-radius:12px;padding:6px 3px 5px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
   transition:border-color .3s,background .3s;
   min-width:0;overflow:hidden;
 }
@@ -963,8 +1022,8 @@ html,body{
   to{transform:rotate(18deg) scale(1.25)}
 }
 
-.g-icon{font-size:14px;line-height:1}
-.g-val{font-size:10px;font-weight:bold;color:rgba(220,255,220,0.9);transition:color .3s}
+.g-icon{font-size:16px;line-height:1}
+.g-val{font-size:13px;font-weight:bold;color:rgba(220,255,220,0.9);transition:color .3s;letter-spacing:-.3px}
 .g-item.ok .g-val{color:#A5D6A7}
 .g-item.warn .g-val{color:#FFB74D}
 .g-item.danger .g-val{color:#FF8A80}
@@ -980,13 +1039,18 @@ html,body{
 .g-bar-bg{width:100%;height:5px;background:rgba(0,0,0,.3);border-radius:3px;overflow:hidden;margin-top:1px}
 .g-bar-fill{height:100%;border-radius:3px;transition:width .6s,background .4s}
 
-.g-btns{display:flex;gap:3px;width:100%}
+.g-ppm{font-size:8px;margin-left:1px}
+.g-btns{display:flex;gap:3px;width:100%;margin-top:2px}
 .g-btn{
   flex:1;
-  background:rgba(255,255,255,0.1);
-  border:1.5px solid rgba(255,255,255,0.2);
-  border-radius:7px;padding:4px 0;
-  font-size:13px;font-family:var(--font);color:white;
+  background:rgba(255,255,255,0.14);
+  border:1.5px solid rgba(255,255,255,0.25);
+  border-radius:9px;
+  padding:8px 0;       /* 터치 영역 확보 */
+  font-size:16px;
+  font-family:var(--font);color:white;
   cursor:pointer;transition:all .1s;
+  min-height:40px;
+  display:flex;align-items:center;justify-content:center;
 }
-.g-btn:active{transform:scale(.85);background:rgba(255,255,255,0.2)}
+.g-btn:active{transform:scale(.88);background:rgba(255,255,255,0.25)}
