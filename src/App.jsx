@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
+import { supabase } from "./supabase";
 // SpineFarmer는 PMA 텍스처 문제로 미사용 — CSS 농부로 대체
 // import { SpineFarmer } from "./SpineFarmer";
 
@@ -228,14 +229,14 @@ function GItem({ icon, value, unit, lo, hi, onM, onP }) {
   );
 }
 
-// ─── 실험실 공지판 ───
+// ─── 실험실 공지판 (현재수치 없음, 항목+범위 크게) ───
 function LabBoard({ vals }) {
   const rows = [
-    { icon: '🌡️', name: '온도', lo: 22, hi: 26, val: vals.temp, unit: '℃', disp: `${Math.round(vals.temp)}℃` },
-    { icon: '💧', name: '습도', lo: 60, hi: 75, val: vals.hum, unit: '%', disp: `${Math.round(vals.hum)}%` },
-    { icon: '💨', name: 'CO₂', lo: 700, hi: 1000, val: vals.co2, unit: 'ppm', disp: `${Math.round(vals.co2)}` },
-    { icon: '🚿', name: '수분', lo: 45, hi: 70, val: vals.water, unit: '%', disp: `${Math.round(vals.water)}%` },
-    { icon: '💡', name: 'LED', lo: 60, hi: 85, val: vals.led, unit: '%', disp: `${Math.round(vals.led)}%` },
+    { icon: '🌡️', name: '온도', range: '22 ~ 26℃',  val: vals.temp,  lo: 22,  hi: 26  },
+    { icon: '💧', name: '습도', range: '60 ~ 75%',   val: vals.hum,   lo: 60,  hi: 75  },
+    { icon: '💨', name: 'CO₂', range: '700 ~ 1000 ppm', val: vals.co2, lo: 700, hi: 1000 },
+    { icon: '🚿', name: '수분', range: '45 ~ 70%',   val: vals.water, lo: 45,  hi: 70  },
+    { icon: '💡', name: 'LED', range: '60 ~ 85%',   val: vals.led,   lo: 60,  hi: 85  },
   ];
   return (
     <div className="lab-board">
@@ -246,11 +247,11 @@ function LabBoard({ vals }) {
           return (
             <div key={r.name} className={`lb-row ${ok ? 'lb-ok' : 'lb-bad'}`}>
               <span className="lb-icon">{r.icon}</span>
-              <span className="lb-name">{r.name}</span>
-              <span className="lb-range">{r.lo}~{r.hi}{r.unit === 'ppm' ? 'ppm' : r.unit}</span>
-              <span className={`lb-cur ${ok ? '' : 'lb-cur-warn'}`}>
-                {ok ? '✓' : '⚠'} {r.disp}{r.unit === 'ppm' ? 'ppm' : ''}
-              </span>
+              <div className="lb-body">
+                <span className="lb-name">{r.name}</span>
+                <span className="lb-range">{r.range}</span>
+              </div>
+              <span className="lb-status">{ok ? '✓' : '!'}</span>
             </div>
           );
         })}
@@ -291,6 +292,57 @@ function Clouds() {
   </>;
 }
 
+// ─── 전역 랭킹 로드 (Supabase 또는 localStorage) ───
+async function loadRanking(setRanking, setLoading) {
+  setLoading(true);
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('rankings')
+        .select('name,score,health,coins')
+        .order('score', { ascending: false })
+        .limit(10);
+      if (!error) setRanking(data || []);
+    } else {
+      setRanking(JSON.parse(localStorage.getItem("gjue_farm") || "[]"));
+    }
+  } catch (e) {
+    setRanking(JSON.parse(localStorage.getItem("gjue_farm") || "[]"));
+  }
+  setLoading(false);
+}
+
+// ─── 랭킹 카드 ───
+function RankCard({ ranking, loading, onRefresh, onHome }) {
+  return (
+    <div className="rank-card">
+      <div className="rank-title">
+        🏆 공주교대 딸기왕
+        {supabase && (
+          <button className="rank-refresh" onClick={onRefresh} disabled={loading}>
+            {loading ? '⏳' : '🔄'}
+          </button>
+        )}
+      </div>
+      {!supabase && (
+        <p className="rank-local-note">⚠️ 현재 이 기기 기록만 표시됩니다</p>
+      )}
+      {loading
+        ? <p style={{ textAlign: "center", color: "#A8804A", padding: "20px 0" }}>불러오는 중...</p>
+        : ranking.length === 0
+          ? <p style={{ textAlign: "center", color: "#A8804A", padding: "16px 0" }}>아직 기록이 없어요 🌱</p>
+          : ranking.map((r, i) => (
+            <div key={i} className={`rank-row${i===0?" gold":i===1?" silver":i===2?" bronze":""}`}>
+              <b>{i + 1}위 {r.name}</b>
+              <span>{r.score}점</span>
+            </div>
+          ))
+      }
+      <button className="btn-start" style={{ marginTop: 14 }} onClick={onHome}>처음으로</button>
+    </div>
+  );
+}
+
 export default function App() {
   const [screen, setScreen] = useState("start");
   const [nickname, setNickname] = useState("");
@@ -302,7 +354,8 @@ export default function App() {
   const [farmer, setFarmer] = useState({ pos: 0.1, anim: "", bubble: "" });
   const [shake, setShake] = useState(false);
   const [bee, setBee] = useState({ y: 30, visible: false, id: 0 });
-  const [ranking, setRanking] = useState(() => JSON.parse(localStorage.getItem("gjue_farm") || "[]"));
+  const [ranking, setRanking] = useState([]);
+  const [rankLoading, setRankLoading] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [animTick, setAnimTick] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -373,10 +426,22 @@ export default function App() {
     const sc = getScore(v.health, v.coins, precAccRef.current);
     setFinalScore(sc);
     const entry = { name: nickname || "딸기농부", score: sc, health: Math.round(v.health), coins: v.coins };
-    const next = [...JSON.parse(localStorage.getItem("gjue_farm") || "[]"), entry]
-      .sort((a, b) => b.score - a.score).slice(0, 10);
-    localStorage.setItem("gjue_farm", JSON.stringify(next));
-    setRanking(next);
+
+    if (supabase) {
+      // Supabase 전역 랭킹 저장
+      supabase.from('rankings').insert(entry).then(() => {
+        // 저장 후 랭킹 새로고침
+        supabase.from('rankings').select('name,score,health,coins')
+          .order('score', { ascending: false }).limit(10)
+          .then(({ data }) => setRanking(data || []));
+      });
+    } else {
+      // localStorage 폴백 (Supabase 미설정 시)
+      const next = [...JSON.parse(localStorage.getItem("gjue_farm") || "[]"), entry]
+        .sort((a, b) => b.score - a.score).slice(0, 10);
+      localStorage.setItem("gjue_farm", JSON.stringify(next));
+      setRanking(next);
+    }
     setScreen("result");
   }, [nickname]);
 
@@ -632,7 +697,7 @@ export default function App() {
               onChange={e => setNickname(e.target.value)}
               placeholder="농부 이름을 입력하세요" maxLength={10} />
             <button className="btn-start" onClick={startGame}>🌱 게임 시작!</button>
-            <button className="btn-rank" onClick={() => setScreen("ranking")}>🏆 랭킹 보기</button>
+            <button className="btn-rank" onClick={() => { setScreen("ranking"); loadRanking(setRanking, setRankLoading); }}>🏆 랭킹 보기</button>
           </div>
         )}
         {screen === "result" && (() => {
@@ -646,23 +711,16 @@ export default function App() {
               <div className="result-grade">{grade}등급</div>
               <div className="result-detail">{label}<br />건강도 {Math.round(vals.health)}% · 수확 코인 {vals.coins}개</div>
               <button className="btn-start" onClick={startGame}>🔄 다시 하기</button>
-              <button className="btn-rank" onClick={() => setScreen("ranking")}>🏆 랭킹 보기</button>
+              <button className="btn-rank" onClick={() => { setScreen("ranking"); loadRanking(setRanking, setRankLoading); }}>🏆 랭킹 보기</button>
             </div>
           );
         })()}
         {screen === "ranking" && (
-          <div className="rank-card">
-            <div className="rank-title">🏆 공주교대 딸기왕</div>
-            {ranking.length === 0
-              ? <p style={{ textAlign: "center", color: "#A8804A", padding: "16px 0" }}>아직 기록이 없어요 🌱</p>
-              : ranking.map((r, i) => (
-                <div key={i} className={`rank-row${i === 0 ? " gold" : i === 1 ? " silver" : i === 2 ? " bronze" : ""}`}>
-                  <b>{i + 1}위 {r.name}</b>
-                  <span>{r.score}점</span>
-                </div>
-              ))}
-            <button className="btn-start" style={{ marginTop: 14 }} onClick={() => setScreen("start")}>처음으로</button>
-          </div>
+          <RankCard
+            ranking={ranking} loading={rankLoading}
+            onRefresh={() => loadRanking(setRanking, setRankLoading)}
+            onHome={() => setScreen("start")}
+          />
         )}
       </div>
     );
