@@ -229,29 +229,29 @@ function GItem({ icon, value, unit, lo, hi, onM, onP }) {
   );
 }
 
-// ─── 실험실 공지판 (현재수치 없음, 항목+범위 크게) ───
+// ─── 실험실 공지판 — HUD와 Scene 사이 가로 배치 (겹침 없음) ───
 function LabBoard({ vals }) {
   const rows = [
-    { icon: '🌡️', name: '온도', range: '22 ~ 26℃',  val: vals.temp,  lo: 22,  hi: 26  },
-    { icon: '💧', name: '습도', range: '60 ~ 75%',   val: vals.hum,   lo: 60,  hi: 75  },
-    { icon: '💨', name: 'CO₂', range: '700 ~ 1000 ppm', val: vals.co2, lo: 700, hi: 1000 },
-    { icon: '🚿', name: '수분', range: '45 ~ 70%',   val: vals.water, lo: 45,  hi: 70  },
-    { icon: '💡', name: 'LED', range: '60 ~ 85%',   val: vals.led,   lo: 60,  hi: 85  },
+    { icon: '🌡️', name: '온도', range: '22~26℃',   val: vals.temp,  lo: 22,  hi: 26   },
+    { icon: '💧', name: '습도', range: '60~75%',    val: vals.hum,   lo: 60,  hi: 75   },
+    { icon: '💨', name: 'CO₂', range: '700~1000',  val: vals.co2,   lo: 700, hi: 1000 },
+    { icon: '🚿', name: '수분', range: '45~70%',    val: vals.water, lo: 45,  hi: 70   },
+    { icon: '💡', name: 'LED', range: '60~85%',    val: vals.led,   lo: 60,  hi: 85   },
   ];
   return (
-    <div className="lab-board">
-      <div className="lb-title">🔬 스마트팜 최적 환경 조건표</div>
-      <div className="lb-rows">
+    <div className="lab-strip">
+      <div className="lab-strip-title">🔬 최적 환경 조건</div>
+      <div className="lb-grid">
         {rows.map(r => {
           const ok = r.val >= r.lo && r.val <= r.hi;
           return (
-            <div key={r.name} className={`lb-row ${ok ? 'lb-ok' : 'lb-bad'}`}>
-              <span className="lb-icon">{r.icon}</span>
-              <div className="lb-body">
+            <div key={r.name} className={`lb-cell ${ok ? 'lb-ok' : 'lb-bad'}`}>
+              <div className="lb-cell-head">
+                <span className="lb-icon">{r.icon}</span>
                 <span className="lb-name">{r.name}</span>
-                <span className="lb-range">{r.range}</span>
+                <span className="lb-status">{ok ? '✓' : '!'}</span>
               </div>
-              <span className="lb-status">{ok ? '✓' : '!'}</span>
+              <div className="lb-range">{r.range}</div>
             </div>
           );
         })}
@@ -752,12 +752,12 @@ export default function App() {
         {event && <div className="event-banner">{event.title} {event.msg}</div>}
       </div>
 
+      {/* 실험실 공지판 — flex 행, 겹침 없음 */}
+      <LabBoard vals={vals} />
+
       {/* SCENE */}
       <div className="scene">
         <div className={`sky ${skyClass}`} />
-
-        {/* 실험실 공지판 — 온실 위 빈 공간 채움 */}
-        <LabBoard vals={vals} />
 
         <div className="greenhouse">
           {/* smart farm top panel */}

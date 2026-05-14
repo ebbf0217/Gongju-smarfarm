@@ -279,50 +279,44 @@ html,body{
 /* scene */
 .scene{flex:1;position:relative;overflow:hidden;z-index:1}
 
-/* ── 실험실 공지판 ── */
-.lab-board{
-  position:absolute;
-  top:3%;left:3%;right:3%;
-  z-index:6;
-  background:linear-gradient(180deg,rgba(12,28,18,.95),rgba(18,40,25,.92));
-  border:1.5px solid rgba(100,200,130,.55);
-  border-radius:14px;
-  padding:8px 10px 9px;
-  box-shadow:0 4px 18px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06);
+/* ── 실험실 공지판 — HUD 바로 아래 가로 배치 ── */
+.lab-strip{
+  flex-shrink:0;
+  background:linear-gradient(180deg,rgba(10,24,16,.98),rgba(15,34,20,.96));
+  border-bottom:1.5px solid rgba(80,170,110,.4);
+  padding:5px 6px 6px;
+  z-index:28;
 }
-.lb-title{
-  font-size:12px;font-weight:bold;
-  color:#A5D6A7;text-align:center;
-  letter-spacing:.8px;
-  padding-bottom:6px;margin-bottom:6px;
-  border-bottom:1px solid rgba(100,200,130,.3);
+.lab-strip-title{
+  font-size:9px;color:rgba(150,210,160,.65);
+  text-align:center;letter-spacing:.8px;margin-bottom:4px;
+  text-transform:uppercase;
 }
-.lb-rows{display:flex;flex-direction:column;gap:4px}
-.lb-row{
-  display:flex;align-items:center;gap:8px;
-  padding:5px 8px;border-radius:8px;
-  border-left:4px solid transparent;
-  background:rgba(255,255,255,.045);
+.lb-grid{display:flex;gap:3px}
+.lb-cell{
+  flex:1;
+  padding:4px 3px 5px;
+  border-radius:8px;
+  text-align:center;
+  border:1.5px solid rgba(100,180,120,.22);
+  background:rgba(255,255,255,.04);
 }
-.lb-row.lb-ok{border-left-color:#66BB6A}
-.lb-row.lb-bad{border-left-color:#EF5350;background:rgba(239,83,80,.1)}
-.lb-icon{font-size:18px;flex-shrink:0;width:22px;text-align:center}
-.lb-body{flex:1;display:flex;flex-direction:column;gap:1px}
-.lb-name{
-  font-size:13px;font-weight:bold;
-  color:#C8E6C9;letter-spacing:.3px;
+.lb-cell.lb-ok{border-color:rgba(102,187,106,.5)}
+.lb-cell.lb-bad{border-color:rgba(239,83,80,.7);background:rgba(239,83,80,.12)}
+.lb-cell-head{
+  display:flex;align-items:center;justify-content:center;
+  gap:2px;margin-bottom:1px;
 }
+.lb-icon{font-size:13px}
+.lb-name{font-size:9px;font-weight:bold;color:#C8E6C9}
+.lb-status{font-size:10px;font-weight:bold;margin-left:1px}
+.lb-cell.lb-ok .lb-status{color:#66BB6A}
+.lb-cell.lb-bad .lb-status{color:#EF5350;animation:badgePulse .4s ease-in-out infinite alternate}
 .lb-range{
-  font-size:15px;font-weight:bold;
-  color:#E8F5E9;letter-spacing:.5px;
+  font-size:12px;font-weight:bold;
+  color:#E8F5E9;line-height:1.2;letter-spacing:-.2px;
 }
-.lb-row.lb-bad .lb-range{color:#FF8A80}
-.lb-status{
-  font-size:16px;font-weight:bold;flex-shrink:0;
-  width:22px;text-align:center;
-}
-.lb-row.lb-ok .lb-status{color:#66BB6A}
-.lb-row.lb-bad .lb-status{color:#EF5350;animation:badgePulse .4s ease-in-out infinite alternate}
+.lb-cell.lb-bad .lb-range{color:#FF8A80}
 
 .sky{position:absolute;inset:0;transition:background 2.5s}
 .sky-day{background:linear-gradient(180deg,#0D1B2A,#1A2D44 40%,#1E3A28 75%,#0D2010 100%)}
@@ -332,9 +326,9 @@ html,body{
 .cloud{display:none}
 .sun{display:none}
 
-/* ── 스마트팜 온실 — 공지판 아래로 배치 ── */
+/* ── 스마트팜 온실 — scene 전체 사용 ── */
 .greenhouse{
-  position:absolute;bottom:0;left:2%;right:2%;height:72%;
+  position:absolute;bottom:0;left:2%;right:2%;height:96%;
 }
 
 /* 산업용 상단 패널 */
